@@ -1,0 +1,14 @@
+# ============================================================
+# 家具命名允许列表（按房间类型）
+# 
+# 修改此文件即可增删房间类型或调整允许的家具名称，
+# 无需改动代码。
+# ============================================================
+
+furniture_allowed:
+  bathroom:    [toilet, washbasin, shower]
+  kitchen:     [kitchen_countertop, dining_table]
+  bedroom:     [bed, wardrobe, nightstand, desk, chair, coat_rack]
+  living_room: [sofa, coffee_table, dining_table, tv_stand, shoe_cabinet, chair]
+  diningroom:  [dining_table, chair]
+  other:       [table, chair, shelf]

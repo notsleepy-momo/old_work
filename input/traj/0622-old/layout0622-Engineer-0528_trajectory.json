@@ -1,0 +1,156 @@
+[
+  {
+    "id": 1,
+    "start_time": "2025-05-28 05:00:00",
+    "end_time": "2025-05-28 05:01:00",
+    "duration": 1.0,
+    "center_position": {
+      "x": 52.0,
+      "y": 34.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 2,
+    "start_time": "2025-05-28 05:01:05",
+    "end_time": "2025-05-28 05:03:05",
+    "duration": 2.0,
+    "center_position": {
+      "x": 36.5,
+      "y": 57.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 3,
+    "start_time": "2025-05-28 05:03:18",
+    "end_time": "2025-05-28 05:26:18",
+    "duration": 23.0,
+    "center_position": {
+      "x": 52.0,
+      "y": 60.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 4,
+    "start_time": "2025-05-28 05:26:39",
+    "end_time": "2025-05-28 05:39:39",
+    "duration": 13.0,
+    "center_position": {
+      "x": 22.5,
+      "y": 3.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 5,
+    "start_time": "2025-05-28 05:39:39",
+    "end_time": "2025-05-28 05:53:39",
+    "duration": 14.0,
+    "center_position": {
+      "x": 22.5,
+      "y": 3.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 6,
+    "start_time": "2025-05-28 16:44:12",
+    "end_time": "2025-05-28 17:39:12",
+    "duration": 55.0,
+    "center_position": {
+      "x": 36.0,
+      "y": 66.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 7,
+    "start_time": "2025-05-28 17:39:24",
+    "end_time": "2025-05-28 17:49:24",
+    "duration": 10.0,
+    "center_position": {
+      "x": 2.0,
+      "y": 17.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 8,
+    "start_time": "2025-05-28 17:49:27",
+    "end_time": "2025-05-28 19:17:27",
+    "duration": 88.0,
+    "center_position": {
+      "x": 11.0,
+      "y": 34.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 9,
+    "start_time": "2025-05-28 19:17:31",
+    "end_time": "2025-05-28 19:31:31",
+    "duration": 14.0,
+    "center_position": {
+      "x": 2.0,
+      "y": 17.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 10,
+    "start_time": "2025-05-28 19:31:50",
+    "end_time": "2025-05-28 19:56:50",
+    "duration": 25.0,
+    "center_position": {
+      "x": 38.5,
+      "y": 106.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 11,
+    "start_time": "2025-05-28 19:56:50",
+    "end_time": "2025-05-28 19:57:50",
+    "duration": 1.0,
+    "center_position": {
+      "x": 38.5,
+      "y": 106.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 12,
+    "start_time": "2025-05-28 19:57:50",
+    "end_time": "2025-05-28 20:26:50",
+    "duration": 29.0,
+    "center_position": {
+      "x": 38.5,
+      "y": 106.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 13,
+    "start_time": "2025-05-28 20:26:59",
+    "end_time": "2025-05-28 20:54:59",
+    "duration": 28.0,
+    "center_position": {
+      "x": 49.5,
+      "y": 60.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 14,
+    "start_time": "2025-05-28 20:55:16",
+    "end_time": "2025-05-28 21:23:16",
+    "duration": 28.0,
+    "center_position": {
+      "x": 45.5,
+      "y": 25.5
+    },
+    "fluctuation_radius": 0.1
+  }
+]

@@ -1,0 +1,222 @@
+[
+  {
+    "id": 1,
+    "start_time": "2025-05-30 05:31:03",
+    "end_time": "2025-05-30 05:49:33",
+    "duration": 18.5,
+    "center_position": {
+      "x": 52.5,
+      "y": 34.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 2,
+    "start_time": "2025-05-30 05:49:44",
+    "end_time": "2025-05-30 05:54:14",
+    "duration": 4.5,
+    "center_position": {
+      "x": 24.5,
+      "y": 89.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 3,
+    "start_time": "2025-05-30 05:54:14",
+    "end_time": "2025-05-30 06:04:14",
+    "duration": 10.0,
+    "center_position": {
+      "x": 24.5,
+      "y": 89.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 4,
+    "start_time": "2025-05-30 06:04:19",
+    "end_time": "2025-05-30 06:06:19",
+    "duration": 2.0,
+    "center_position": {
+      "x": 11.5,
+      "y": 69.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 5,
+    "start_time": "2025-05-30 06:06:34",
+    "end_time": "2025-05-30 06:14:34",
+    "duration": 8.0,
+    "center_position": {
+      "x": 57.5,
+      "y": 126.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 6,
+    "start_time": "2025-05-30 06:14:50",
+    "end_time": "2025-05-30 06:23:50",
+    "duration": 9.0,
+    "center_position": {
+      "x": 43.5,
+      "y": 81.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 7,
+    "start_time": "2025-05-30 06:24:00",
+    "end_time": "2025-05-30 06:32:00",
+    "duration": 8.0,
+    "center_position": {
+      "x": 10.5,
+      "y": 51.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 8,
+    "start_time": "2025-05-30 06:32:00",
+    "end_time": "2025-05-30 06:48:00",
+    "duration": 16.0,
+    "center_position": {
+      "x": 9.0,
+      "y": 53.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 9,
+    "start_time": "2025-05-30 16:46:17",
+    "end_time": "2025-05-30 16:47:17",
+    "duration": 1.0,
+    "center_position": {
+      "x": 46.0,
+      "y": 112.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 10,
+    "start_time": "2025-05-30 16:47:25",
+    "end_time": "2025-05-30 17:44:25",
+    "duration": 57.0,
+    "center_position": {
+      "x": 36.0,
+      "y": 71.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 11,
+    "start_time": "2025-05-30 17:44:36",
+    "end_time": "2025-05-30 17:56:36",
+    "duration": 12.0,
+    "center_position": {
+      "x": 15.0,
+      "y": 35.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 12,
+    "start_time": "2025-05-30 17:56:36",
+    "end_time": "2025-05-30 18:56:36",
+    "duration": 60.0,
+    "center_position": {
+      "x": 15.0,
+      "y": 35.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 13,
+    "start_time": "2025-05-30 18:56:40",
+    "end_time": "2025-05-30 19:09:40",
+    "duration": 13.0,
+    "center_position": {
+      "x": 9.0,
+      "y": 54.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 14,
+    "start_time": "2025-05-30 19:09:50",
+    "end_time": "2025-05-30 19:37:50",
+    "duration": 28.0,
+    "center_position": {
+      "x": 22.5,
+      "y": 3.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 15,
+    "start_time": "2025-05-30 19:38:09",
+    "end_time": "2025-05-30 19:46:09",
+    "duration": 8.0,
+    "center_position": {
+      "x": 49.0,
+      "y": 71.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 16,
+    "start_time": "2025-05-30 19:46:25",
+    "end_time": "2025-05-30 19:47:25",
+    "duration": 1.0,
+    "center_position": {
+      "x": 45.5,
+      "y": 25.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 17,
+    "start_time": "2025-05-30 19:47:28",
+    "end_time": "2025-05-30 19:52:28",
+    "duration": 5.0,
+    "center_position": {
+      "x": 60.5,
+      "y": 20.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 18,
+    "start_time": "2025-05-30 19:52:28",
+    "end_time": "2025-05-30 20:02:28",
+    "duration": 10.0,
+    "center_position": {
+      "x": 60.5,
+      "y": 20.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 19,
+    "start_time": "2025-05-30 20:02:31",
+    "end_time": "2025-05-30 20:10:31",
+    "duration": 8.0,
+    "center_position": {
+      "x": 52.5,
+      "y": 34.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 20,
+    "start_time": "2025-05-30 20:10:37",
+    "end_time": "2025-05-31 03:59:37",
+    "duration": 469.0,
+    "center_position": {
+      "x": 52.5,
+      "y": 34.5
+    },
+    "fluctuation_radius": 0.1
+  }
+]

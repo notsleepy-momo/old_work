@@ -1,0 +1,28 @@
+# ========================
+# YAML File Format Specification for Smart Device Layout
+# ========================
+# house:
+#   size: { x: <house total width>, y: <house total height> }
+#   furniture:                 # Furniture list
+#     - name: <furniture name>
+#       id: <furniture id>
+#       position: { x: <bottom-left x>, y: <bottom-left y>}
+# ========================
+house:
+  size: { x: 63, y: 137 }
+  furniture:
+    - name: Washing Machine # 洗衣机
+      id: Washing_Machine_001
+      position: { x: 49, y: 58 }
+    - name: Refrigerator
+      id: Refrigerator_001  
+      position: { x: 57, y: 104}
+    - name: TV Stand # 电视支架
+      id: TV_Stand_001
+      position: { x: 37, y: 97 }
+    - name: Oven
+      id: Oven_001
+      position: { x: 57, y: 126}
+    - name: Stove
+      id: Stove_001
+      position: { x: 57, y: 120}

@@ -1,0 +1,159 @@
+# ========================
+# YAML File Format Specification for House Layout
+# ========================
+# house:
+#   size: { x: <house total width>, y: <house total height> }
+#   rooms:
+#     - name: <room name>
+#       position: { x: <bottom-left x>, y: <bottom-left y>,  width: <width>, height: <height> }
+#       walls:                # Wall settings (default draws top, right, bottom, left walls)
+#         top: true
+#         right: true
+#         bottom: true
+#         left: true    
+#         extra:              # Optional, additional wall list
+#           - points: [[x1, y1], [x2, y2]]
+#       doors:                     # Door list
+#         - name: <door name>
+#           points: [[x1, y1], [x2, y2], [x3, y3]]
+#       furniture:                 # Furniture list
+#         - name: <furniture name>
+#           id: <furniture id>
+#           position: { x: <bottom-left x>, y: <bottom-left y>, width: <width>, height: <height> }
+# ========================
+house:
+  size: { x: 63, y: 137}
+  rooms:
+    - name: Balcony
+      position: { x: 0, y: 0, width: 30, height: 15 }
+      walls:
+        top: true
+        right: true
+        bottom: true
+        left: true
+      doors:
+        - name: Balcony_Second Bedroom
+          points: [[12,15],[20,15],[12,7]]
+      furniture:
+        - name: Chair
+          id: Chair_002
+          position: { x: 20, y: 1, width: 5, height: 5 }
+    - name: Second Bedroom
+      position: { x: 0, y: 15, width: 30, height: 42 }
+      walls:
+        top: true
+        right: true
+        bottom: false
+        left: true
+      doors:
+        - name: Second Bedroom_Living Room
+          points: [[18,57],[27,57],[18,48]]
+      furniture:
+        - name: Wardrobe
+          id: Wardrobe_001
+          position: { x: 1, y: 51, width: 17, height: 6 }
+        - name: Bed
+          id: Bed_001
+          position: { x: 1, y: 25, width: 20, height: 18 }
+        - name: Desk
+          id: Desk_001
+          position: { x: 1, y: 16, width: 4, height: 9 }
+    - name: Master Bedroom
+      position: { x: 30, y: 15, width: 33, height: 42 }
+      walls:
+        top: true
+        right: true
+        bottom: true
+        left: true
+      doors:
+        - name: Master Bedroom_Living Room
+          points: [[32,57],[41,57],[32,48]]
+      furniture:
+        - name: Wardrobe
+          id: Wardrobe_002
+          position: { x: 47, y: 52, width: 16, height: 5 }
+        - name: Bed
+          id: Bed_002
+          position: { x: 42, y: 25, width: 21, height: 19 }
+        - name: Nightstand
+          id: Nightstand_002
+          position: { x: 58, y: 16, width: 5, height: 9 }
+    - name: Bathroom
+      position: { x: 42, y: 57, width: 21, height: 21 }
+      walls:
+        top: true
+        right: true
+        bottom: true
+        left: true
+      doors:
+        - name: Bathroom_Dining Room
+          points: [[46,78],[54,78],[46,70]]
+      furniture:
+        - name: Toilet
+          id: Toilet_001
+          position: { x: 56, y: 71, width: 7, height: 7 }
+        - name: Washing Machine
+          id: Washing_Machine_001
+          position: { x: 43, y: 58, width: 6, height: 5 }
+        - name: Washbasin
+          id: Washbasin_001
+          position: { x: 49, y: 58, width: 6, height: 5 }
+    - name: Kitchen
+      position: { x: 42, y: 78, width: 21, height: 42 }
+      walls:
+        top: false
+        right: true
+        bottom: true
+        left: true
+      doors:
+        - name: Kitchen_Living Room
+          points: [[42,81],[42,92],[53,81]]
+        - name: Main Entrance
+          points: [[46,120],[54,120],[46,112]]
+      furniture:
+        - name: Refrigerator
+          id: Refrigerator_001
+          position: { x: 57, y: 104, width: 6, height: 6 }
+    - name: Living Room
+      position: { x: 10, y: 57, width: 32, height: 63 }
+      walls:
+        top: true
+        right: true
+        bottom: true
+        left: true
+      furniture:
+        - name: Sofa
+          id: Sofa_001
+          position: { x: 11, y: 91, width: 10, height: 27 }
+        - name: Coffee Table
+          id: Coffee Table_001
+          position: { x: 24, y: 95, width: 6, height: 19 }
+        - name: Shoe Cabinet
+          id: Shoe Cabinet_001
+          position: { x: 11, y: 69, width: 3, height: 8 }
+        - name: Dining Table
+          id: Dining Table_001
+          position: { x: 30, y: 65, width: 12, height: 12 }
+        - name: TV Stand
+          id: TV Stand_001
+          position: { x: 37, y: 97, width: 5, height: 19 }
+        - name: Chair
+          id: Chair_001
+          position: { x: 24, y: 89, width: 5, height: 5 }
+    - name: Kitchen
+      position: { x: 42, y: 120, width: 21, height: 17 }
+      walls:
+        top: true
+        right: true
+        bottom: true
+        left: true
+      furniture:
+        - name: Kitchen Countertop
+          id: Kitchen_Countertop_001
+          position: { x: 43, y: 132, width: 20, height: 5 }
+        - name: Oven
+          id: Oven_001
+          position: { x: 57, y: 126, width: 6, height: 6 }
+        - name: Stove
+          id: Stove_001
+          position: { x: 57, y: 120, width: 6, height: 6 }

@@ -1,0 +1,15 @@
+__pycache__
+.vscode
+.idea
+.env
+*.ipynb
+*.log
+**logs
+*.txt
+**/output
+**/data
+data
+profile_generator/data
+test
+
+

@@ -1,0 +1,44 @@
+# ============================================================
+# 智能设备 → 房间类型映射配置
+# priority: 5=明确指示（单一房间类型）, 3=歧义指示（多可能类型）
+# 
+# 修改此文件即可增删智能设备，无需改动代码。
+# 智能设备名称同时作为保护名单：这些名称的家具不会被 LLM 重新命名。
+# ============================================================
+
+smart_devices:
+  # ── 厨房设备（明确指示 → kitchen）──
+  Fr:
+    types: [kitchen]
+    priority: 5
+  Refrigerator:
+    types: [kitchen]
+    priority: 5
+  Stove:
+    types: [kitchen]
+    priority: 5
+  Oven:
+    types: [kitchen]
+    priority: 5
+  Microwave:
+    types: [kitchen]
+    priority: 5
+
+  # ── 卫浴设备（明确指示 → bathroom）──
+  Washing Machine:
+    types: [bathroom]
+    priority: 5
+
+  # ── 歧义设备（需结合行为/连通性进一步判断）──
+  TV:
+    types: [living_room, bedroom]
+    priority: 3
+  TV Cabinet:
+    types: [living_room, bedroom]
+    priority: 3
+  TV Stand:
+    types: [living_room, bedroom]
+    priority: 3
+  Treadmill:
+    types: [living_room, other]
+    priority: 3

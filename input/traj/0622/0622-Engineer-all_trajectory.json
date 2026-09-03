@@ -1,0 +1,497 @@
+[
+  {
+    "id": 1,
+    "start_time": "2025-05-31 05:30:00",
+    "end_time": "2025-05-31 05:30:30",
+    "duration": 0.5,
+    "center_position": {
+      "x": 52.5,
+      "y": 34.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 2,
+    "start_time": "2025-05-31 05:30:33",
+    "end_time": "2025-05-31 05:34:33",
+    "duration": 4.0,
+    "center_position": {
+      "x": 60.5,
+      "y": 20.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 3,
+    "start_time": "2025-05-31 05:34:55",
+    "end_time": "2025-05-31 05:47:55",
+    "duration": 13.0,
+    "center_position": {
+      "x": 49.5,
+      "y": 58.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 4,
+    "start_time": "2025-05-31 05:48:08",
+    "end_time": "2025-05-31 05:51:38",
+    "duration": 3.5,
+    "center_position": {
+      "x": 57.0,
+      "y": 126.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 5,
+    "start_time": "2025-05-31 05:52:01",
+    "end_time": "2025-05-31 06:25:01",
+    "duration": 33.0,
+    "center_position": {
+      "x": 22.5,
+      "y": 3.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 6,
+    "start_time": "2025-05-31 06:25:17",
+    "end_time": "2025-05-31 06:54:17",
+    "duration": 29.0,
+    "center_position": {
+      "x": 24.0,
+      "y": 89.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 7,
+    "start_time": "2025-05-31 06:54:24",
+    "end_time": "2025-05-31 06:56:24",
+    "duration": 2.0,
+    "center_position": {
+      "x": 57.0,
+      "y": 106.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 8,
+    "start_time": "2025-05-31 06:56:28",
+    "end_time": "2025-05-31 07:07:28",
+    "duration": 11.0,
+    "center_position": {
+      "x": 58.0,
+      "y": 122.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 9,
+    "start_time": "2025-05-31 07:07:33",
+    "end_time": "2025-05-31 07:21:33",
+    "duration": 14.0,
+    "center_position": {
+      "x": 46.0,
+      "y": 95.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 10,
+    "start_time": "2025-05-31 07:21:44",
+    "end_time": "2025-05-31 07:24:44",
+    "duration": 3.0,
+    "center_position": {
+      "x": 10.0,
+      "y": 52.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 11,
+    "start_time": "2025-05-31 07:24:53",
+    "end_time": "2025-05-31 07:33:53",
+    "duration": 9.0,
+    "center_position": {
+      "x": 3.0,
+      "y": 20.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 12,
+    "start_time": "2025-05-31 07:33:56",
+    "end_time": "2025-05-31 09:02:56",
+    "duration": 89.0,
+    "center_position": {
+      "x": 11.0,
+      "y": 34.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 13,
+    "start_time": "2025-05-31 09:02:59",
+    "end_time": "2025-05-31 09:15:59",
+    "duration": 13.0,
+    "center_position": {
+      "x": 3.0,
+      "y": 20.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 14,
+    "start_time": "2025-05-31 09:16:18",
+    "end_time": "2025-05-31 09:29:18",
+    "duration": 13.0,
+    "center_position": {
+      "x": 27.0,
+      "y": 104.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 15,
+    "start_time": "2025-05-31 09:29:27",
+    "end_time": "2025-05-31 10:28:27",
+    "duration": 59.0,
+    "center_position": {
+      "x": 36.0,
+      "y": 71.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 16,
+    "start_time": "2025-05-31 10:28:31",
+    "end_time": "2025-05-31 10:41:31",
+    "duration": 13.0,
+    "center_position": {
+      "x": 24.0,
+      "y": 89.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 17,
+    "start_time": "2025-05-31 10:41:42",
+    "end_time": "2025-05-31 10:45:42",
+    "duration": 4.0,
+    "center_position": {
+      "x": 59.0,
+      "y": 107.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 18,
+    "start_time": "2025-05-31 10:45:47",
+    "end_time": "2025-05-31 10:54:47",
+    "duration": 9.0,
+    "center_position": {
+      "x": 53.0,
+      "y": 134.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 19,
+    "start_time": "2025-05-31 10:54:50",
+    "end_time": "2025-05-31 10:58:50",
+    "duration": 4.0,
+    "center_position": {
+      "x": 59.0,
+      "y": 123.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 20,
+    "start_time": "2025-05-31 10:58:50",
+    "end_time": "2025-05-31 10:59:50",
+    "duration": 1.0,
+    "center_position": {
+      "x": 59.0,
+      "y": 123.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 21,
+    "start_time": "2025-05-31 10:59:52",
+    "end_time": "2025-05-31 11:07:52",
+    "duration": 8.0,
+    "center_position": {
+      "x": 59.0,
+      "y": 129.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 22,
+    "start_time": "2025-05-31 11:07:53",
+    "end_time": "2025-05-31 11:16:53",
+    "duration": 9.0,
+    "center_position": {
+      "x": 53.0,
+      "y": 134.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 23,
+    "start_time": "2025-05-31 11:17:01",
+    "end_time": "2025-05-31 11:36:01",
+    "duration": 19.0,
+    "center_position": {
+      "x": 47.0,
+      "y": 90.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 24,
+    "start_time": "2025-05-31 11:36:14",
+    "end_time": "2025-05-31 12:34:14",
+    "duration": 58.0,
+    "center_position": {
+      "x": 11.0,
+      "y": 30.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 25,
+    "start_time": "2025-05-31 12:34:14",
+    "end_time": "2025-05-31 12:36:14",
+    "duration": 2.0,
+    "center_position": {
+      "x": 11.0,
+      "y": 30.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 26,
+    "start_time": "2025-05-31 12:36:14",
+    "end_time": "2025-05-31 13:32:14",
+    "duration": 56.0,
+    "center_position": {
+      "x": 11.0,
+      "y": 30.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 27,
+    "start_time": "2025-05-31 13:32:14",
+    "end_time": "2025-05-31 13:34:14",
+    "duration": 2.0,
+    "center_position": {
+      "x": 11.0,
+      "y": 30.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 28,
+    "start_time": "2025-05-31 13:34:19",
+    "end_time": "2025-05-31 14:32:19",
+    "duration": 58.0,
+    "center_position": {
+      "x": 22.5,
+      "y": 3.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 29,
+    "start_time": "2025-05-31 14:32:41",
+    "end_time": "2025-05-31 15:15:41",
+    "duration": 43.0,
+    "center_position": {
+      "x": 46.0,
+      "y": 60.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 30,
+    "start_time": "2025-05-31 15:15:50",
+    "end_time": "2025-05-31 15:59:50",
+    "duration": 44.0,
+    "center_position": {
+      "x": 24.0,
+      "y": 90.0
+    },
+    "fluctuation_radius": 0.2
+  },
+  {
+    "id": 31,
+    "start_time": "2025-05-31 16:00:00",
+    "end_time": "2025-05-31 16:43:00",
+    "duration": 43.0,
+    "center_position": {
+      "x": 48.0,
+      "y": 122.0
+    },
+    "fluctuation_radius": 0.2
+  },
+  {
+    "id": 32,
+    "start_time": "2025-05-31 16:43:06",
+    "end_time": "2025-05-31 16:43:36",
+    "duration": 0.5,
+    "center_position": {
+      "x": 48.0,
+      "y": 90.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 33,
+    "start_time": "2025-05-31 16:43:36",
+    "end_time": "2025-05-31 17:26:36",
+    "duration": 43.0,
+    "center_position": {
+      "x": 48.0,
+      "y": 90.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 34,
+    "start_time": "2025-05-31 17:26:36",
+    "end_time": "2025-05-31 17:27:36",
+    "duration": 1.0,
+    "center_position": {
+      "x": 48.0,
+      "y": 90.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 35,
+    "start_time": "2025-05-31 18:26:50",
+    "end_time": "2025-05-31 18:34:50",
+    "duration": 8.0,
+    "center_position": {
+      "x": 24.0,
+      "y": 89.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 36,
+    "start_time": "2025-05-31 18:34:54",
+    "end_time": "2025-05-31 18:38:54",
+    "duration": 4.0,
+    "center_position": {
+      "x": 39.5,
+      "y": 106.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 37,
+    "start_time": "2025-05-31 18:38:58",
+    "end_time": "2025-05-31 18:42:58",
+    "duration": 4.0,
+    "center_position": {
+      "x": 24.0,
+      "y": 89.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 38,
+    "start_time": "2025-05-31 18:42:58",
+    "end_time": "2025-05-31 20:12:58",
+    "duration": 90.0,
+    "center_position": {
+      "x": 24.0,
+      "y": 89.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 39,
+    "start_time": "2025-05-31 20:13:00",
+    "end_time": "2025-05-31 20:17:40",
+    "duration": 4.67,
+    "center_position": {
+      "x": 27.0,
+      "y": 97.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 40,
+    "start_time": "2025-05-31 20:17:42",
+    "end_time": "2025-05-31 20:22:32",
+    "duration": 4.83,
+    "center_position": {
+      "x": 37.0,
+      "y": 97.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 41,
+    "start_time": "2025-05-31 20:22:41",
+    "end_time": "2025-05-31 20:37:11",
+    "duration": 14.5,
+    "center_position": {
+      "x": 49.5,
+      "y": 60.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 42,
+    "start_time": "2025-05-31 20:37:25",
+    "end_time": "2025-05-31 20:42:15",
+    "duration": 4.83,
+    "center_position": {
+      "x": 48.0,
+      "y": 53.0
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 43,
+    "start_time": "2025-05-31 20:42:19",
+    "end_time": "2025-05-31 20:52:09",
+    "duration": 9.83,
+    "center_position": {
+      "x": 52.5,
+      "y": 34.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 44,
+    "start_time": "2025-05-31 20:52:12",
+    "end_time": "2025-05-31 21:22:02",
+    "duration": 29.83,
+    "center_position": {
+      "x": 60.5,
+      "y": 20.5
+    },
+    "fluctuation_radius": 0.1
+  },
+  {
+    "id": 45,
+    "start_time": "2025-05-31 21:22:05",
+    "end_time": "2025-06-01 04:51:55",
+    "duration": 449.83,
+    "center_position": {
+      "x": 52.5,
+      "y": 34.5
+    },
+    "fluctuation_radius": 0.1
+  }
+]
