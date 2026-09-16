@@ -4,7 +4,7 @@ import os
 from typing import Optional
 
 
-DEFAULT_LLM_MODEL = "gpt-5.6-sol"
+DEFAULT_LLM_MODEL = "gpt-5.6-terra"
 API_KEY_ENV = "FURNITURE_API_KEY"
 BASE_URL_ENV = "FURNITURE_BASE_URL"
 

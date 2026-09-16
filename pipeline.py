@@ -118,10 +118,14 @@ class Pipeline:
       - skip_llm_correction:     跳过 LLM action 修正, 纯 CV 候选 (CV-LLM 消融)
       - use_free_form_llm:       使用无约束 LLM prompt (CV-LLM 消融)
       - use_direct_llm_gen:      跳过 CV, LLM 直接生成家具位置 (CV-LLM 消融)
+      - skip_room_module:        跳过房间语义模块, 房间类型全为 unknown (单模块移除消融)
+      - skip_behavior_module:    跳过行为语义模块, 行为证据置空 (单模块移除消融)
+      - skip_naming_module:      跳过家具命名模块, 非设备家具标 unknown (单模块移除消融)
       - skip_layered_priority:   跳过7层优先级, 直接使用 LLM 输出 (推理策略消融)
       - skip_behavior_prior:     跳过行为先验推理 (推理策略消融)
       - skip_allowed_list:       跳过家具允许名单约束 (推理策略消融)
       - skip_shape_constraint:   跳过形状约束 (推理策略消融)
+      - skip_naming_funnel:      使用无约束命名基线，跳过词表和几何后处理
     """
 
     def __init__(self, api_key: str = None, base_url: str = None,
@@ -314,8 +318,16 @@ class Pipeline:
     # ==========================================================
     def behavior_analysis_step(self, world_yaml_path: str, trajectory_data: list,
                                 room_analyses: list) -> list:
-        """分析每个房间的行为模式（LLM 以 temperature=0.0 输出，最大化确定性）"""
+        """分析每个房间的行为模式（LLM 以 temperature=0.0 输出，最大化确定性）
+
+        ablation['skip_behavior_module'] 为 True 时跳过行为语义模块，
+        返回空行为证据（单模块移除消融）。
+        """
         logger.info("=== Step 4: 行为模式预测 (BehaviorAgent) ===")
+
+        if self.ablation.get('skip_behavior_module'):
+            logger.info("[ABLATION] 跳过行为语义模块，行为证据置空")
+            return []
 
         with open(world_yaml_path, 'r', encoding='utf-8') as f:
             world_layout = yaml.safe_load(f)
@@ -351,6 +363,12 @@ class Pipeline:
             world_layout, room_analyses, behavior_analyses,
             ablation=self.ablation
         )
+        # The ablation runner reports ProtV at the pre-final naming stage.
+        # Keep that immutable snapshot in memory; do not write it into the
+        # final layout or let subsequent merge/repair logic mutate it.
+        self.last_pre_final_namings = list(
+            getattr(self.naming_agent, 'last_pre_final_namings', []))
+        self.last_pre_final_room_analyses = list(room_analyses)
         logger.info(f"家具命名完成: {len(furniture_namings)} 件")
 
         # ── 5b. 合并最终输出 ──

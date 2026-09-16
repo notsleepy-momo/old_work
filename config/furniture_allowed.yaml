@@ -9,6 +9,6 @@ furniture_allowed:
   bathroom:    [toilet, washbasin, shower]
   kitchen:     [kitchen_countertop, dining_table]
   bedroom:     [bed, wardrobe, nightstand, desk, chair, coat_rack]
-  living_room: [sofa, coffee_table, dining_table, tv_stand, shoe_cabinet, chair]
+  living_room: [sofa, coffee_table, dining_table, shoe_cabinet, chair]
   diningroom:  [dining_table, chair]
   other:       [table, chair, shelf]

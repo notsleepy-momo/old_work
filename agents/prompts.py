@@ -374,33 +374,33 @@ You are a professional home layout analyst. Your task is to infer room types bas
 6. Return the result as a JSON array with objects containing room_id, room_type, and confidence
 """
 
-BEHAVIOR_AGENT_PROMPT = """
-You are a professional behavior analyst. Your task is to analyze behavior patterns from trajectory data.
+BEHAVIOR_AGENT_ROOM_PROMPT = """
+You are a professional behavior analyst. Analyze the behavior pattern of ONE room from the trajectory stop points detected inside it.
 
-## House Layout
-{house_layout_yaml}
+## Room Layout
+{room_layout_yaml}
 
-## Behavior Trajectory Data
+## Behavior Trajectory Data (stop points inside this room)
 {trajectory_data}
 
-## Room Types
+## Room Type
 {room_types_info}
 
 ## Requirements
-1. For each room, identify the main activities based on trajectory data and room type
-2. Identify frequent areas within each room (describe relative positions like "center", "near door", "against wall")
+1. Identify the main activities for this room based on the trajectory data and room type
+2. Identify frequent areas within the room (describe relative positions like "center", "near door", "against wall")
 3. Analyze time-based patterns considering the room type:
    - primary_time_period: "night" (22:00-06:00), "day" (06:00-22:00), or "none"
    - peak_hours: list of time ranges with highest activity (e.g., ["06:00-08:00", "18:00-20:00"])
    - total_duration: total time spent in the room (seconds)
    - visit_count: number of visits to the room
-4. Return the result as a JSON array with objects containing room_id, main_activities, frequent_areas, and time_based_patterns
+4. Return ONLY one compact JSON object for this room — no explanations, no markdown fences
 
-## Output Format (JSON array)
-Each object in the array contains:
+## Output Format (single JSON object)
+The object contains:
 - room_id: string (e.g., "room1")
 - main_activities: list of strings (e.g., ["sleeping", "getting dressed"])
-- frequent_areas: list of strings describing relative positions (e.g., ["center", "near window"])
+- frequent_areas: list of short position descriptions (e.g., ["center", "near window"])
 - time_based_patterns: object with:
   - primary_time_period: "night", "day", or "none"
   - peak_hours: list of time ranges with highest activity
@@ -504,8 +504,8 @@ Then REJECT any candidate that fails either the Valid Range or Cannot Be below.
 | dining_table | 40 < area < 200 | area < 30 or ratio ≥ 2.5 |
 | desk | 30 < area < 150, 1.2 ≤ ratio < 2.5 | area < 20 or ratio ≥ 3.0 |
 | nightstand | area < 50, ratio < 1.5 | area ≥ 60 or ratio ≥ 2.0 |
-| chair | area < 60, ratio < 2.0 | area ≥ 70 |
-| coffee_table | 15 < area < 130, ratio < 2.2 | area < 10 or ratio ≥ 2.5 |
+| chair | area < 70, ratio < 2.2 | area ≥ 80 |
+| coffee_table | 15 < area < 150, ratio < 3.5 | area < 10 or ratio ≥ 4.0 |
 | kitchen_countertop | area > 30, ratio < 2.0 | area < 15 or ratio ≥ 3.0 |
 | toilet | 15 < area < 80, ratio < 2.0 | area < 10 or ratio ≥ 2.5 |
 | bookshelf | ratio ≥ 2.0, area > 20 | ratio < 1.5 or area < 15 |
@@ -600,7 +600,7 @@ Only compare furniture that can coexist in the same room type. Use the rules bel
 | Pair | How to Tell Them Apart |
 |------|----------------------|
 | **sofa vs dining_table** | sofa: ratio >= 1.8 + LONG side against wall + opposite TV_Stand; dining_table: centered (NO wall contact) or short side only. **Ratio < 1.5 or short-side wall contact -> reject sofa, use dining_table.** |
-| **coffee_table vs dining_table** | coffee_table: 15-130, between sofa and TV, NOT against wall; dining_table: 40-200, separate zone from TV-sofa axis, often with chair nearby |
+| **coffee_table vs dining_table** | First locate the sofa--TV axis. coffee_table: 15-150, positioned **between sofa and TV on that axis**; it may be elongated. dining_table: 40-200, square-ish and in a separate zone away from that axis. If a small square candidate touches the end of the on-axis table, prefer **chair** for the small candidate rather than coffee_table. |
 | **shoe_cabinet vs chair** | shoe_cabinet: elongated (ratio ≥ 1.5), against **exterior wall** (house boundary, NOT interior wall) near entrance/door; chair: small (< 40), adjacent to dining_table |
 | **sofa vs shoe_cabinet** | sofa: LARGE (area > 100), ratio ≥ 1.8, long side hugs wall, opposite TV; shoe_cabinet: SMALL (area 10–90), ratio 1.5–3.0, near entrance. **Area > 90 → sofa, not shoe_cabinet. Area > 100 → shoe_cabinet REJECTED by Level 2.** |
 | **tv_stand vs sofa** | tv_stand: SMALLER (area 30–150), ratio ≥ 1.5, against wall, on same side as TV_Stand smart device; sofa: LARGER (area > 100), ratio ≥ 1.8, long side hugs wall OPPOSITE TV. **Area < 80 → reject sofa, use tv_stand or dining_table.** |
@@ -651,10 +651,10 @@ Only compare furniture that can coexist in the same room type. Use the rules bel
 | Order | Rule |
 |-------|------|
 | 1 | **sofa** (HARD RULE — ratio ≥ 1.8 + LONG side touches wall + face TV): 3 checks REQUIRED:<br>(a) **ratio MUST ≥ 1.8** — reject immediately if ratio < 1.5<br>(b) **LONG side MUST touch a wall** — the longer edge (max(width, height)) must be adjacent to a wall (distance ≤ 2). Short-side wall contact → NOT a sofa. Centered → NOT a sofa.<br>(c) **MUST face TV_Stand** — on opposite wall from TV<br><br>**With TV_Stand known**: sofa = elongated piece whose long side hugs the wall opposite TV.<br>**Without TV_Stand**: sofa = largest elongated piece whose long side hugs a wall.<br><br>**Centered, short-side-contact, or ratio < 1.5 → NOT sofa. Skip this piece and re-evaluate at order 3.** |
-| 2 | **dining_table**: Largest centered piece (area 40-200, NOT between TV and sofa, NOT against a wall) → **dining_table**. Only assign ONE dining_table in the room. |
+| 2 | **coffee_table**: Before assigning a dining table, identify the medium table between sofa and TV on their connecting axis (area 15-150; elongated is allowed) → **coffee_table**. A small square piece directly adjacent to it is more likely a **chair** than a second coffee table. |
 | 3 | **tv_stand**: Elongated (ratio ≥ 1.5), against wall, area 30-150, on the wall where TV_Stand smart device is placed. If no TV_Stand smart device, the elongated against-wall piece that is NOT the sofa (i.e., on same wall as or adjacent to where TV would logically be) → **tv_stand**. Only 1 per room. |
-| 4 | **coffee_table**: Medium-small (area 15-130), centered, placed between TV and sofa zone, NOT against wall → **coffee_table**. |
-| 5 | **chair**: Small (area < 60), standalone or near dining_table, ratio < 2.0 → **chair**. |
+| 4 | **dining_table**: Largest square-ish table away from the sofa--TV axis (area 40-200) → **dining_table**. Only assign ONE dining_table in the room. |
+| 5 | **chair**: Small (area < 70), standalone, near dining_table, or directly adjacent to the coffee_table, ratio < 2.2 → **chair**. |
 | 6 | **shoe_cabinet**: Medium-small (area 10-90, ratio 1.5-3.0), against an **exterior wall** (house boundary, NOT interior wall between rooms), near entrance/door → **shoe_cabinet**. Only 1 per room. |
 
 ## Kitchen (allowed: kitchen_countertop, dining_table)
@@ -757,4 +757,102 @@ Sofa example:
 - [ ] **NO duplicate names in the same room** — each furniture type appears at most once per room (sofa, chair, shoe_cabinet, wardrobe, etc.)
 - [ ] Each `reasoning` references size data (area + ratio) explicitly
 - [ ] Each `confidence` is consistent with the number of aligned signals
+"""
+
+
+# Prompt variants used by the reasoning ablations.  The post-processing flags
+# alone are insufficient because the original prompt would still instruct the
+# model to apply the ablated rule.
+def build_furniture_naming_prompt(*, skip_allowed_list=False,
+                                   skip_shape_constraint=False):
+    """Return the naming prompt with selected constraints removed."""
+    prompt = FURNITURE_AGENT_PROMPT
+    if skip_allowed_list:
+        start = prompt.find("## ALLOWED FURNITURE LISTS")
+        end = prompt.find("---\n## HARD CONSTRAINTS", start)
+        if start >= 0 and end > start:
+            prompt = (
+                prompt[:start]
+                + "## ALLOWED FURNITURE LISTS (ABLATION: DISABLED)\n"
+                "Do not enforce a room-specific vocabulary; choose the most "
+                "descriptive name supported by the observations.\n\n"
+                + prompt[end:]
+            )
+        prompt = prompt.replace(
+            "Each level eliminates impossible candidates from the Allowed List.",
+            "Use the room type as context, but do not eliminate names by a fixed vocabulary.",
+        )
+        prompt = prompt.replace(
+            "## Level 1 — Room Type Filter (Hard Constraint)",
+            "## Level 1 — Room Type Context (No Vocabulary Constraint)",
+        )
+        prompt = prompt.replace(
+            "1. **Allowed List Only**: Every furniture name MUST come from the ALLOWED FURNITURE LISTS above. No exceptions.",
+            "1. Allowed vocabulary is not enforced in this ablation.",
+        )
+        prompt = prompt.replace(
+            "Look up the room type, and get the Allowed List. This is the full candidate set. No candidate outside this list is allowed.",
+            "Use the inferred room type as context, but do not restrict names to a fixed allowed list.",
+        )
+    if skip_shape_constraint:
+        start = prompt.find("## Level 2 — Size + Shape Filter")
+        end = prompt.find("## Level 3 — Position + Adjacency Filter", start)
+        if start >= 0 and end > start:
+            prompt = (
+                prompt[:start]
+                + "## Level 2 — Size + Shape Filter (ABLATION: DISABLED)\n"
+                "Do not apply prescribed area, aspect-ratio, or shape rejection rules.\n\n"
+                + prompt[end:]
+            )
+        hard_start = prompt.find("3. **Sofa's LONG SIDE MUST touch a wall")
+        hard_end = prompt.find("---\n\n## REASONING FUNNEL", hard_start)
+        if hard_start >= 0 and hard_end > hard_start:
+            prompt = (
+                prompt[:hard_start]
+                + "3-5. Sofa size, aspect-ratio, wall-contact, and TV-facing "
+                  "rules are not hard constraints in this ablation.\n\n"
+                + prompt[hard_end:]
+            )
+    return prompt
+
+
+# Ablation-only baseline. It deliberately removes the four-stage naming funnel
+# and all vocabulary/geometry hard constraints while preserving the same
+# structured output contract as the full naming agent.
+FURNITURE_NAMING_UNCONSTRAINED_PROMPT = """
+You are a home-layout analyst. Assign one concise English furniture name to
+each unnamed furniture item.
+
+Use your general visual and spatial judgement. Do not use room-specific
+allowed-name lists and do not apply prescribed size, aspect-ratio, wall,
+adjacency, or behavior rules. The goal is an unconstrained naming baseline,
+not a constrained decision funnel.
+
+House layout:
+```yaml
+{house_layout_yaml}
+```
+
+Inferred room types:
+```json
+{room_analyses}
+```
+
+Behavior summaries, if available:
+```json
+{behavior_analyses}
+```
+
+Return ONLY a JSON array. Include every unnamed furniture item exactly once:
+```json
+[
+  {{
+    "furniture_id": "room1_fur1",
+    "name": "bed",
+    "room_id": "room1",
+    "confidence": 0.7,
+    "reasoning": "brief free-form rationale"
+  }}
+]
+```
 """

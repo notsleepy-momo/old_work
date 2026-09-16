@@ -602,7 +602,7 @@ class FurnitureDetectionAgent:
         return candidates
 
     def _merge_adjacent_similar_boxes(self, candidates: List[Dict],
-                                       gap_length: float = 3.0,
+                                       gap_length: float = 3.8,
                                        size_ratio: float = 0.6,
                                        room_img: np.ndarray = None,
                                        name: str = "",
@@ -627,7 +627,7 @@ class FurnitureDetectionAgent:
         n = len(candidates)
         scale = getattr(self, '_scale', 0.08)
         thr = gap_length / scale
-        # # ---- 合并前可视化：在 room_img 上画出所有候选框及标号 ----
+        # ---- 合并前可视化：在 room_img 上画出所有候选框及标号 ----
         # if mask_dir and room_img is not None:
         #     viz = room_img.copy()
         #     for idx, c in enumerate(candidates):
@@ -893,6 +893,36 @@ class FurnitureDetectionAgent:
 
         return "\n".join(lines)
 
+    def _prepare_candidates_for_correction(
+        self,
+        candidates: List[Dict],
+        traj_mask: np.ndarray,
+        scale: float,
+        room_name: str,
+    ) -> List[Dict]:
+        """Run deterministic CV cleanup shared by the full and no-LLM variants."""
+        self._annotate_structure_features(candidates, traj_mask, scale)
+
+        filtered_candidates = []
+        for candidate in candidates:
+            bbox = candidate['bbox']
+            area_dm2 = bbox['width'] * bbox['height'] * scale * scale
+            is_corner_noise = (
+                candidate.get('candidate_type') == 'trajectory_surrounded'
+                and area_dm2 < 30.0
+                and candidate.get('loop_cluster_count', 0) == 0
+                and candidate.get('arc_score', 0) < 0.35
+            )
+            if is_corner_noise:
+                logger.info(
+                    f"  {room_name}: filter corner-noise candidate "
+                    f"ID={candidate.get('candidate_id')} (area={area_dm2:.1f}dm2)"
+                )
+            else:
+                filtered_candidates.append(candidate)
+
+        return self._auto_merge_strong_signal_pairs(filtered_candidates, room_name)
+
     # ==============================================================
     # 主流程
     # ==============================================================
@@ -914,11 +944,24 @@ class FurnitureDetectionAgent:
             ablation: 消融实验控制标志
                 - skip_trajectory_loop: 跳过轨迹闭环家具检测
                 - skip_llm_correction: 跳过 LLM action 修正，纯 CV 候选
-                - use_free_form_llm: 使用无约束 LLM prompt
-                - use_direct_llm_gen: 跳过 CV, LLM 直接生成家具位置
+                - use_free_form_llm: 使用无约束 LLM prompt，并允许其增删候选
+                - use_direct_llm_gen: 跳过 CV 候选，LLM 直接生成家具位置
         """
         ablation = ablation or {}
         self._ablation = ablation
+        # Enforce input-removal flags at the agent boundary as well as in
+        # Pipeline.  This keeps direct agent calls and the experiment runner
+        # on the same protocol, and prevents a disabled modality from being
+        # reintroduced by a caller bypassing Pipeline.step2.
+        if ablation.get('skip_trajectory'):
+            trajectory_json_path = None
+        if ablation.get('skip_hatch'):
+            hatch_mask_path = None
+        if ablation.get('skip_smart_device'):
+            smart_device_path = None
+        if ablation.get('use_direct_llm_gen'):
+            # Direct generation must not even load the CV hatch source.
+            hatch_mask_path = None
         if output_path is None:
             # 默认输出到输入 YAML 同目录下的 room_real.yaml
             yaml_dir = os.path.dirname(yaml_path) if os.path.dirname(yaml_path) else '.'
@@ -1328,7 +1371,7 @@ class FurnitureDetectionAgent:
                       all_traj: List[Dict], stay_heatmap: np.ndarray = None,
                       thumb_b64: str = None, hatch_mask: np.ndarray = None,
                       room_devices: List[Dict] = None) -> List[Tuple]:
-        """处理一个房间，返回 [(room_name, px, py, pw, ph), ...]  绝对像素坐标"""
+        """处理一个房间，返回绝对像素坐标的家具框列表。"""
         name = room['name']
         pos = room.get('position', {})
         rx, ry, rw_room, rh_room = pos.get('x', 0), pos.get('y', 0), pos.get('width', 0), pos.get('height', 0)
@@ -1354,16 +1397,15 @@ class FurnitureDetectionAgent:
         crop_h, crop_w = room_img.shape[:2]
         mask_dir = os.path.join(os.path.dirname(self._output_path), 'masks')
         os.makedirs(mask_dir, exist_ok=True)
-        # cv2.imwrite(os.path.join(mask_dir, f'{name}_input.png'), room_img)
 
         # ========== Hatch Mask 家具提取 ==========
-        # 先从 greyroom 获取墙体掩码（用于 touch_wall_ratio 过滤）, 再提取 hatch 家具
         gray = cv2.cvtColor(room_img, cv2.COLOR_BGR2GRAY)
         wall_mask = (gray < 5).astype(np.uint8)
 
         hatch_furniture = []
         hatch_crop = None
-        if hatch_mask is not None and hatch_mask.size > 0:
+        if (not getattr(self, '_ablation', {}).get('use_direct_llm_gen')
+                and hatch_mask is not None and hatch_mask.size > 0):
             h_hm, w_hm = hatch_mask.shape[:2]
             hx1 = max(0, px_left)
             hy1 = max(0, px_top)
@@ -1371,7 +1413,6 @@ class FurnitureDetectionAgent:
             hy2 = min(h_hm, px_bot)
             if hx2 > hx1 and hy2 > hy1:
                 hatch_crop = hatch_mask[hy1:hy2, hx1:hx2].copy()
-                # 提取 hatch 家具矩形（白色阴影 → 矩形框，传入 wall_mask 做死角过滤）
                 hatch_furniture = self._extract_hatch_furniture_rects(hatch_crop, wall_mask=wall_mask)
                 logger.info(f"  {name}: hatch 阴影家具 {len(hatch_furniture)} 个")
 
@@ -1385,7 +1426,6 @@ class FurnitureDetectionAgent:
         red_line = ((R > 80) & (G < 100) & (B < 100)).astype(np.uint8)
         traj_mask_full = np.clip(traj_raw + red_line, 0, 1).astype(np.uint8)
 
-        # 简单膨胀版traj（供 topology 分析用）
         dilate_kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
         traj_mask_dilated = cv2.dilate(traj_mask_full, dilate_kernel_small, iterations=1)
 
@@ -1395,52 +1435,31 @@ class FurnitureDetectionAgent:
                 hatch_furniture, traj_mask_full, crop_w, crop_h)
 
         # ========== 新 Greyroom 处理：排除 hatch 区域，检测轨迹包围区 ==========
-        # 构建 hatch 排除掩码（在当前房间裁剪坐标中）
         hatch_exclude_mask = np.zeros((crop_h, crop_w), dtype=np.uint8)
-        if hatch_crop is not None and np.sum(hatch_crop > 0) > 0:
+        if (not getattr(self, '_ablation', {}).get('use_direct_llm_gen')
+                and hatch_crop is not None and np.sum(hatch_crop > 0) > 0):
             hatch_exclude_mask = (hatch_crop > 127).astype(np.uint8)
-            # 膨胀 hatch 区域，避免边界残留干扰
             hatch_exclude_dilated = cv2.dilate(hatch_exclude_mask,
                                                 np.ones((3, 3), np.uint8), iterations=1)
         else:
             hatch_exclude_dilated = np.zeros((crop_h, crop_w), dtype=np.uint8)
 
-        # 检测轨迹包围的非 hatch 区域（greyroom 重新处理）
         ablation = getattr(self, '_ablation', {})
         trajectory_surrounded_furniture = []
-        if not ablation.get('skip_trajectory_loop'):
+        if ablation.get('use_direct_llm_gen'):
+            logger.info(
+                f"  [ABLATION] {name}: skip all CV candidate sources "
+                "for direct LLM generation"
+            )
+        elif not ablation.get('skip_trajectory_loop'):
             trajectory_surrounded_furniture = self._detect_trajectory_surrounded_regions(
                 room_img, traj_mask_dilated, hatch_exclude_dilated, wall_mask, name, mask_dir)
         else:
             logger.info(f"  [ABLATION] {name}: 跳过轨迹闭环家具检测")
 
         # ========== 合并候选 ==========
-        # 源1: hatch 阴影家具
         hatch_candidates = list(hatch_furniture)
-        # 源2: greyroom (轨迹包围区 + 弧形轨迹圆环)
-        greyroom_candidates = []
-        greyroom_candidates.extend(trajectory_surrounded_furniture)
-
-        # ========== 分源可视化 ==========
-        # 可视化1: hatch 候选（红色）
-        # hatch_viz = room_img.copy()
-        # for c in hatch_candidates:
-        #     b = c['bbox']
-        #     cv2.rectangle(hatch_viz, (b['x'], b['y']), (b['x']+b['width'], b['y']+b['height']),
-        #                   (0, 0, 255), 2)
-        #     cv2.putText(hatch_viz, f"h{hatch_candidates.index(c)}", (b['x'], b['y']-3),
-        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
-        # cv2.imwrite(os.path.join(mask_dir, f'{name}_hatch_candidates.png'), hatch_viz)
-
-        # 可视化2: greyroom 候选（轨迹包围=蓝色）
-        # greyroom_viz = room_img.copy()
-        # for c in trajectory_surrounded_furniture:
-        #     b = c['bbox']
-        #     cv2.rectangle(greyroom_viz, (b['x'], b['y']), (b['x']+b['width'], b['y']+b['height']),
-        #                   (255, 0, 0), 2)
-        #     cv2.putText(greyroom_viz, "traj", (b['x'], b['y']-3),
-        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 0, 0), 1)
-        # cv2.imwrite(os.path.join(mask_dir, f'{name}_greyroom_candidates.png'), greyroom_viz)
+        greyroom_candidates = list(trajectory_surrounded_furniture)
 
         # ========== 合并 + 去重 ==========
         # 重叠去重：蓝框(greyroom)与红框(hatch)存在重叠 → 删除蓝框
@@ -1467,48 +1486,45 @@ class FurnitureDetectionAgent:
 
         # 为每个 candidate 分配唯一 ID
         for idx, c in enumerate(all_candidates):
-            c['candidate_id'] = idx + 1  # 1-based ID 便于 LLM 引用
+            c['candidate_id'] = idx + 1
 
         if all_candidates:
             all_candidates = self._fuse_and_dedup_candidates(all_candidates)
 
-        # ========== 分配 candidate_id ==========
         for i, c in enumerate(all_candidates):
             c['candidate_id'] = i
 
-        # 可视化3: 最终合并结果（红色=家具）
-        final_viz = room_img.copy()
-        for c in all_candidates:
-            b = c['bbox']
-            ctype = c.get('candidate_type', '?')
-            color = (0, 0, 255) if ctype == 'hatch_furniture' else (255, 0, 0)
-            label = f"F{i}({ctype.split('_')[0]})"
-            cv2.rectangle(final_viz, (b['x'], b['y']), (b['x']+b['width'], b['y']+b['height']),
-                          color, 2)
-            cv2.putText(final_viz, label, (b['x'], b['y']-3),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.3, color, 1)
-        # cv2.imwrite(os.path.join(mask_dir, f'{name}_final_candidates.png'), final_viz)
         logger.info(f"  {name}: CV 最终候选 {len(all_candidates)} 个")
 
         # 编码图片为 base64
         _, img_encoded = cv2.imencode('.png', room_img)
         img_b64 = base64.b64encode(img_encoded.tobytes()).decode('utf-8')
 
-        # 裁剪房间热度图并编码
         room_heatmap_b64 = None
         if stay_heatmap is not None and stay_heatmap.size > 0:
             room_heatmap = self._crop_heatmap_for_room(
                 stay_heatmap, px_left, px_top, px_right, px_bot)
             _, hm_encoded = cv2.imencode('.png', room_heatmap)
             room_heatmap_b64 = base64.b64encode(hm_encoded.tobytes()).decode('utf-8')
-            # cv2.imwrite(os.path.join(mask_dir, f'{name}_heatmap.png'), room_heatmap)
+
+        # Deterministic CV cleanup is part of candidate preparation, not of
+        # the remote LLM correction module.  Run it once for every variant so
+        # Full and No-LLM are compared from the same candidate set.
+        scale = getattr(self, '_scale', 0.08)
+        if not ablation.get('use_direct_llm_gen'):
+            all_candidates = self._prepare_candidates_for_correction(
+                all_candidates, traj_mask_full, scale, name)
 
         if self.llm is None or ablation.get('skip_llm_correction'):
             if ablation.get('skip_llm_correction'):
-                logger.info(f"  [ABLATION] {name}: 跳过 LLM 修正, 使用纯 CV 候选")
+                logger.info(
+                    f"  [ABLATION] {name}: skip LLM geometry correction; "
+                    "keep deterministic CV post-processing"
+                )
             elif self.llm is None:
-                logger.warning(f"No LLM available for {name}, using all CV candidates")
-            # 无 LLM / 纯 CV 时直接使用全部 CV 候选
+                logger.warning(
+                    f"No LLM available for {name}, using deterministic CV candidates"
+                )
             direct_furniture = []
             for c in all_candidates:
                 b = c['bbox']
@@ -1517,7 +1533,7 @@ class FurnitureDetectionAgent:
                     b['width'], b['height']))
             return direct_furniture
 
-        # 构建轨迹信息（筛选本房间内的停留点）
+        # 构建轨迹信息
         traj_margin = max(2, int(5 / max(self._scale, 0.1)))
         room_traj = self._filter_trajectory_for_room(
             all_traj, rx, ry, rw_room, rh_room,
@@ -1525,19 +1541,8 @@ class FurnitureDetectionAgent:
             crop_right=px_right, crop_bot=px_bot,
             margin=traj_margin)
         trajectory_info = self._build_trajectory_info(room_traj)
-
-        # 构建结构化 CV 候选信息（替代旧的 hole_region_info）
-        # 附加只读结构特征（loop_cluster_count/arc_score/rectangularity/size_class）
-        self._annotate_structure_features(
-            all_candidates, traj_mask_full, getattr(self, '_scale', 0.08))
-
-        # ── 自动合并满足 STRONG MERGE SIGNAL 的蓝框对（保证确定性）──
-        all_candidates = self._auto_merge_strong_signal_pairs(
-            all_candidates, name)
-
         cv_candidates_info = self._build_cv_candidates_info(all_candidates)
 
-        # 构建房间上下文 YAML
         room_info = {
             "room_name": name,
             "position": {"x": rx, "y": ry, "width": rw_room, "height": rh_room},
@@ -1548,9 +1553,8 @@ class FurnitureDetectionAgent:
         }
         room_yaml = yaml.dump(room_info, default_flow_style=None, allow_unicode=True, sort_keys=False)
 
-        # ── 消融: 直接 LLM 生成 (跳过 CV 候选) ──
+        # 消融与调用分支
         if ablation.get('use_direct_llm_gen'):
-            logger.info(f"  [ABLATION] {name}: 直接 LLM 生成家具位置 (跳过 CV)")
             direct_prompt = f"""You are a furniture detection system. Look at this room image and detect ALL furniture objects.
             
 Room context (pixel coordinates):
@@ -1558,7 +1562,7 @@ Room context (pixel coordinates):
 {room_yaml}
 ```
 
-{trajectory_info}
+            {trajectory_info}
 
 Output a JSON array of furniture objects. Each object has:
 - "action": "keep"
@@ -1595,23 +1599,20 @@ Example:
                 json_match = _re.search(r'\[.*?\]', content_direct, _re.DOTALL)
                 if json_match:
                     direct_actions = json.loads(json_match.group(0))
-                    furniture = self._parse_room_furniture_actions(
-                        json.dumps(direct_actions), [], name,
-                        rx, ry, px_left, px_top, crop_w, crop_h)
+                    furniture = self._parse_direct_furniture_generation(
+                        json.dumps(direct_actions), name,
+                        px_left, px_top, crop_w, crop_h)
                     if furniture:
                         logger.info(f"  [ABLATION] {name}: 直接 LLM 生成 {len(furniture)} 件家具")
                         return furniture
             except Exception as e:
                 logger.warning(f"  [ABLATION] {name}: 直接 LLM 生成失败: {e}")
-            # 回退: 使用 CV 候选
-            logger.info(f"  [ABLATION] {name}: 直接生成回退到 CV 候选")
-            fallback = []
-            for c in all_candidates:
-                b = c['bbox']
-                fallback.append((name,
-                    px_left + b['x'], px_top + b['y'],
-                    b['width'], b['height']))
-            return fallback
+            # Do not fall back to CV here: that would contaminate the direct
+            # generation baseline with the very source it is meant to ablate.
+            logger.warning(
+                f"  [ABLATION] {name}: 直接生成失败，返回空家具结果（不回退 CV）"
+            )
+            return []
 
         # ── 消融: Free-form LLM (无约束 prompt) ──
         if ablation.get('use_free_form_llm'):
@@ -1717,7 +1718,8 @@ Return ONLY the JSON array, no other text.
         logger.info(f"  {name}: LLM 原始输出:\n{content}")
         furniture = self._parse_room_furniture_actions(
             content, all_candidates, name,
-            rx, ry, px_left, px_top, crop_w, crop_h)
+            rx, ry, px_left, px_top, crop_w, crop_h,
+            allow_unrestricted=bool(ablation.get('use_free_form_llm')))
 
         if furniture:
             print(f"  {name}: {len(furniture)} 件家具")
@@ -1727,6 +1729,62 @@ Return ONLY the JSON array, no other text.
             logger.warning(f"  {name}: LLM 处理后无家具输出 "
                            f"(CV 候选 {len(all_candidates)} 个)")
 
+        return furniture
+
+    def _parse_direct_furniture_generation(
+        self,
+        text: str,
+        room_name: str,
+        crop_left: int,
+        crop_top: int,
+        crop_w: int,
+        crop_h: int,
+    ) -> List[Tuple]:
+        """Parse the direct-generation baseline's bbox-only response.
+
+        The action parser below intentionally requires CV candidate IDs and
+        therefore cannot parse direct-generation output. Keeping a separate
+        parser makes this baseline independent of the CV candidate list
+        instead of silently falling back to CV on every valid response.
+        """
+        actions = self._extract_json_array(text)
+        if not actions:
+            return []
+
+        furniture = []
+        for action in actions:
+            if not isinstance(action, dict):
+                continue
+            action_type = str(action.get("action", "keep")).lower()
+            if action_type not in {"", "keep", "add"}:
+                continue
+            bbox = action.get("bbox") or action.get("position")
+            if not isinstance(bbox, dict):
+                continue
+            try:
+                x = float(bbox.get("x", 0))
+                y = float(bbox.get("y", 0))
+                width = float(bbox.get("width", 0))
+                height = float(bbox.get("height", 0))
+            except (TypeError, ValueError):
+                continue
+            if crop_w:
+                x = max(0.0, min(x, float(crop_w)))
+            else:
+                x = max(0.0, x)
+            if crop_h:
+                y = max(0.0, min(y, float(crop_h)))
+            else:
+                y = max(0.0, y)
+            if crop_w:
+                width = min(width, float(crop_w) - x)
+            if crop_h:
+                height = min(height, float(crop_h) - y)
+            if width < 5.0 or height < 5.0:
+                continue
+            furniture.append((
+                room_name, crop_left + x, crop_top + y, width, height
+            ))
         return furniture
 
     # ==============================================================
@@ -1814,22 +1872,33 @@ Return ONLY the JSON array, no other text.
                                        room_name: str,
                                        rx: float, ry: float,
                                        crop_left: int, crop_top: int,
-                                       crop_w: int = 0, crop_h: int = 0) -> List[Tuple]:
+                                       crop_w: int = 0, crop_h: int = 0,
+                                       allow_unrestricted: bool = False) -> List[Tuple]:
         """从 action-based LLM 回复中提取家具 bbox。
 
-        核心原则：CV 检测的所有框都是家具，LLM 仅修复问题。
-        LLM 输出 merge / delete / adjust，未提及的框默认保留。
+        受限协议下，CV 检测的所有框默认视为家具，LLM 只做
+        merge/delete/adjust 修正；Free-form 消融则允许 add、删除红框，
+        并可省略未提及的候选。
 
         Returns:
             [(room_name, px, py, pw, ph), ...]  绝对像素坐标
         """
-        if not candidates:
-            return []
-
         # 建立 candidate_id → candidate 的映射
         candidate_map = {c.get('candidate_id', i): c for i, c in enumerate(candidates)}
 
         actions = self._extract_json_array(text)
+        # Free-form is deliberately allowed to delete any candidate and to
+        # omit untouched candidates.  The constrained protocol keeps red
+        # hatch boxes protected and retains candidates not explicitly acted
+        # on; these are different experimental boundaries.
+        allow_unrestricted = bool(
+            allow_unrestricted
+            or getattr(self, '_ablation', {}).get('use_free_form_llm')
+        )
+        # A free-form model may add furniture even when CV produced no
+        # candidates.  Constrained mode still requires the CV candidate set.
+        if not candidates and not (allow_unrestricted and actions):
+            return []
         if not actions:
             # LLM 无有效输出 → 全部 CV 候选直接使用
             logger.info(f"  {room_name}: LLM 无有效输出，使用全部 {len(candidates)} 个 CV 候选")
@@ -1864,7 +1933,7 @@ Return ONLY the JSON array, no other text.
                 if len(valid) < 2:
                     continue
                 is_red = any(_is_red(c) for c in valid)
-                merged = action.get('merged_bbox', None)
+                merged = action.get('merged_bbox') or action.get('bbox')
                 if merged:
                     mx, my = merged.get('x', 0), merged.get('y', 0)
                     mw, mh = merged.get('width', 0), merged.get('height', 0)
@@ -1885,21 +1954,72 @@ Return ONLY the JSON array, no other text.
                     used_ids.add(cid)
 
             elif act_type == 'delete':
-                cid = action.get('candidate_id')
-                if cid is None or cid in used_ids:
-                    continue
-                c = candidate_map.get(cid)
-                if c is None:
-                    continue
-                # 红框保护：LLM 不可删除 hatch_furniture
-                if _is_red(c):
-                    logger.warning(
-                        f"  {room_name}: LLM 尝试删除红框 candidate {cid}, 已拦截"
-                        f" — {action.get('reason', '')}"
+                raw_ids = action.get('candidate_ids')
+                if raw_ids is None:
+                    raw_ids = [action.get('candidate_id')]
+                if not isinstance(raw_ids, (list, tuple, set)):
+                    raw_ids = [raw_ids]
+                for cid in raw_ids:
+                    if cid is None or cid in used_ids:
+                        continue
+                    c = candidate_map.get(cid)
+                    if c is None:
+                        continue
+                    # Red hatch boxes are protected only by the constrained
+                    # protocol; free-form is intentionally unrestricted.
+                    if _is_red(c) and not allow_unrestricted:
+                        logger.warning(
+                            f"  {room_name}: LLM 尝试删除红框 candidate {cid}, 已拦截"
+                            f" — {action.get('reason', '')}"
+                        )
+                        continue
+                    used_ids.add(cid)
+                    logger.info(
+                        f"  {room_name}: LLM 删除 candidate {cid} — "
+                        f"{action.get('reason', '')}"
                     )
+
+            elif act_type == 'keep':
+                # Free-form prompts may explicitly keep a list of candidates.
+                raw_ids = action.get('candidate_ids')
+                if raw_ids is None:
+                    raw_ids = [action.get('candidate_id')]
+                if not isinstance(raw_ids, (list, tuple, set)):
+                    raw_ids = [raw_ids]
+                for cid in raw_ids:
+                    c = candidate_map.get(cid)
+                    if c is None or cid in used_ids:
+                        continue
+                    b = c['bbox']
+                    furniture_boxes.append({
+                        'x': b['x'], 'y': b['y'], 'w': b['width'],
+                        'h': b['height'], 'red': _is_red(c),
+                    })
+                    used_ids.add(cid)
+
+            elif act_type == 'add' and allow_unrestricted:
+                bbox = action.get('bbox') or action.get('position')
+                if not isinstance(bbox, dict):
                     continue
-                used_ids.add(cid)
-                logger.info(f"  {room_name}: LLM 删除 candidate {cid} — {action.get('reason', '')}")
+                try:
+                    ax = float(bbox.get('x', 0))
+                    ay = float(bbox.get('y', 0))
+                    aw = float(bbox.get('width', 0))
+                    ah = float(bbox.get('height', 0))
+                except (TypeError, ValueError):
+                    continue
+                ax = max(0.0, ax)
+                ay = max(0.0, ay)
+                if crop_w:
+                    ax = min(ax, float(crop_w))
+                    aw = min(aw, float(crop_w) - ax)
+                if crop_h:
+                    ay = min(ay, float(crop_h))
+                    ah = min(ah, float(crop_h) - ay)
+                if aw >= 5.0 and ah >= 5.0:
+                    furniture_boxes.append({
+                        'x': ax, 'y': ay, 'w': aw, 'h': ah, 'red': False,
+                    })
 
             elif act_type == 'adjust':
                 cid = action.get('candidate_id')
@@ -1909,6 +2029,30 @@ Return ONLY the JSON array, no other text.
                 if c is None:
                     continue
                 b = c['bbox']
+                if allow_unrestricted and isinstance(action.get('bbox'), dict):
+                    adjusted = action['bbox']
+                    try:
+                        new_x = float(adjusted.get('x', b['x']))
+                        new_y = float(adjusted.get('y', b['y']))
+                        new_w = float(adjusted.get('width', b['width']))
+                        new_h = float(adjusted.get('height', b['height']))
+                    except (TypeError, ValueError):
+                        continue
+                    new_x = max(0.0, new_x)
+                    new_y = max(0.0, new_y)
+                    if crop_w:
+                        new_x = min(new_x, float(crop_w))
+                        new_w = min(new_w, float(crop_w) - new_x)
+                    if crop_h:
+                        new_y = min(new_y, float(crop_h))
+                        new_h = min(new_h, float(crop_h) - new_y)
+                    if new_w >= 5.0 and new_h >= 5.0:
+                        used_ids.add(cid)
+                        furniture_boxes.append({
+                            'x': new_x, 'y': new_y, 'w': new_w, 'h': new_h,
+                            'red': _is_red(c),
+                        })
+                    continue
                 expand = action.get('expand', {})
                 # 支持正负值：正值扩展，负值收缩
                 el = int(expand.get('left', 0))
@@ -1936,15 +2080,16 @@ Return ONLY the JSON array, no other text.
                 furniture_boxes.append({'x': new_x, 'y': new_y, 'w': new_w, 'h': new_h, 'red': _is_red(c)})
 
         # 未被 LLM 提及的 candidate → 默认保留
-        for c in candidates:
-            cid = c.get('candidate_id', -1)
-            if cid in used_ids:
-                continue
-            b = c['bbox']
-            furniture_boxes.append({'x': b['x'], 'y': b['y'], 'w': b['width'], 'h': b['height'], 'red': _is_red(c)})
+        if not allow_unrestricted:
+            for c in candidates:
+                cid = c.get('candidate_id', -1)
+                if cid in used_ids:
+                    continue
+                b = c['bbox']
+                furniture_boxes.append({'x': b['x'], 'y': b['y'], 'w': b['width'], 'h': b['height'], 'red': _is_red(c)})
 
         # 安全网：防止 LLM 删光所有候选框导致房间无家具输出
-        if not furniture_boxes and candidates:
+        if not furniture_boxes and candidates and (not allow_unrestricted or not actions):
             logger.warning(
                 f"  {room_name}: LLM 删除了全部 {len(candidates)} 个候选框，"
                 f"回退保留所有 CV 候选"

@@ -20,6 +20,15 @@ from baselines.vlm_baseline import (
     run_zeroshot,
 )
 from llm_config import DEFAULT_LLM_MODEL, require_shared_model, resolve_api_key
+from agents.data_models import (
+    FurnitureNaming,
+    FurnitureNamingGenerationResult,
+    RoomAnalysis,
+)
+from agents.furniture_detection_agent import FurnitureDetectionAgent
+from agents.furniture_naming_agent import FurnitureNamingAgent
+from agents.prompts import build_furniture_naming_prompt
+from agents.room_agent import RoomAgent
 
 
 def make_match(*, iou, name_correct, area):
@@ -207,6 +216,312 @@ class TrajectoryProtocolTests(unittest.TestCase):
 
             self.assertIsNone(pipeline.furniture_agent.trajectory_path)
             self.assertEqual(trajectory_data, [])
+
+
+class AblationIsolationTests(unittest.TestCase):
+    def test_primary_ablation_groups_change_only_declared_boundaries(self):
+        self.assertEqual(
+            ablation_experiments.MODAL_VARIANTS,
+            {
+                "Layout Only": {
+                    "skip_trajectory": True,
+                    "skip_smart_device": True,
+                },
+                "+ Device": {"skip_trajectory": True},
+                "+ Trajectory": {"skip_smart_device": True},
+                "Full (All Modalities)": {},
+            },
+        )
+        self.assertEqual(
+            ablation_experiments.HYBRID_VARIANTS,
+            {
+                "CV-only": {"skip_llm_correction": True},
+                "Free-form LLM": {"use_free_form_llm": True},
+                "Direct LLM Generation": {"use_direct_llm_gen": True},
+                "Constrained (Ours)": {},
+            },
+        )
+        self.assertEqual(
+            ablation_experiments.DETECTION_VARIANTS,
+            {
+                "Full (Dual-source)": {},
+                "No Hatch": {"skip_hatch": True},
+                "No Trajectory Loop": {"skip_trajectory_loop": True},
+            },
+        )
+        self.assertEqual(
+            ablation_experiments.REASONING_VARIANTS,
+            {
+                "Full (Reasoning)": {},
+                "No 7-Layer Priority": {"skip_layered_priority": True},
+                "No Behavior Prior": {"skip_behavior_prior": True},
+                "No Allowed List": {"skip_allowed_list": True},
+                "No Shape Constraint": {"skip_shape_constraint": True},
+            },
+        )
+
+    def test_variant_order_puts_each_group_baseline_first(self):
+        self.assertEqual(
+            ablation_experiments._ordered_variant_names(
+                ablation_experiments.MODAL_VARIANTS),
+            ["Full (All Modalities)", "Layout Only", "+ Device", "+ Trajectory"],
+        )
+        self.assertEqual(
+            ablation_experiments._ordered_variant_names(
+                ablation_experiments.HYBRID_VARIANTS)[0],
+            "Constrained (Ours)",
+        )
+        self.assertEqual(
+            ablation_experiments._ordered_variant_names(
+                ablation_experiments.DETECTION_VARIANTS)[0],
+            "Full (Dual-source)",
+        )
+
+    def test_group_selection_deduplicates_and_keeps_module_supplement_explicit(self):
+        selected = ablation_experiments._resolve_group_infos(
+            ["modal", "modal"])
+        self.assertEqual([key for key, _ in selected], ["modal"])
+
+        selected = ablation_experiments._resolve_group_infos(
+            ["all", "module"])
+        self.assertEqual(
+            [key for key, _ in selected],
+            ["module", "modal", "hybrid", "detection", "reasoning"],
+        )
+
+    def test_direct_generation_parser_does_not_require_cv_candidates(self):
+        agent = FurnitureDetectionAgent.__new__(FurnitureDetectionAgent)
+        result = agent._parse_direct_furniture_generation(
+            json.dumps([
+                {"action": "keep", "bbox": {
+                    "x": 10, "y": 20, "width": 30, "height": 40,
+                }},
+            ]),
+            "room1", crop_left=100, crop_top=200,
+            crop_w=80, crop_h=90,
+        )
+        self.assertEqual(result, [("room1", 110.0, 220.0, 30.0, 40.0)])
+
+    def test_direct_generation_does_not_fallback_to_cv_candidates(self):
+        agent = FurnitureDetectionAgent.__new__(FurnitureDetectionAgent)
+        agent._ablation = {"use_direct_llm_gen": True}
+        self.assertEqual(
+            agent._parse_direct_furniture_generation(
+                "not json", "room1", 0, 0, 100, 100),
+            [],
+        )
+
+    def test_free_form_parser_accepts_add_and_delete_lists(self):
+        agent = FurnitureDetectionAgent.__new__(FurnitureDetectionAgent)
+        agent._ablation = {"use_free_form_llm": True}
+        candidates = [
+            {
+                "candidate_id": 1,
+                "candidate_type": "hatch_furniture",
+                "bbox": {"x": 10, "y": 10, "width": 20, "height": 20},
+            },
+            {
+                "candidate_id": 2,
+                "candidate_type": "trajectory_surrounded",
+                "bbox": {"x": 40, "y": 10, "width": 20, "height": 20},
+            },
+        ]
+        result = agent._parse_room_furniture_actions(
+            json.dumps([
+                {"action": "delete", "candidate_ids": [1, 2]},
+                {"action": "add", "bbox": {
+                    "x": 70, "y": 15, "width": 12, "height": 10,
+                }},
+            ]),
+            candidates, "room1", 0, 0, 0, 0, 100, 100,
+            allow_unrestricted=True,
+        )
+        self.assertEqual(result, [("room1", 70.0, 15.0, 12.0, 10.0)])
+
+    def test_constrained_parser_protects_red_candidate_from_delete(self):
+        agent = FurnitureDetectionAgent.__new__(FurnitureDetectionAgent)
+        candidates = [{
+            "candidate_id": 1,
+            "candidate_type": "hatch_furniture",
+            "bbox": {"x": 10, "y": 10, "width": 20, "height": 20},
+        }]
+        result = agent._parse_room_furniture_actions(
+            json.dumps([{"action": "delete", "candidate_id": 1}]),
+            candidates, "room1", 0, 0, 0, 0, 100, 100,
+        )
+        self.assertEqual(result, [("room1", 10, 10, 20, 20)])
+
+    def test_reasoning_prompt_variants_remove_the_declared_constraints(self):
+        no_allowed = build_furniture_naming_prompt(skip_allowed_list=True)
+        self.assertIn("ALLOWED FURNITURE LISTS (ABLATION: DISABLED)", no_allowed)
+        self.assertNotIn("Pick furniture names **STRICTLY from the allowed list", no_allowed)
+        self.assertNotIn("Allowed List Only", no_allowed)
+
+        no_shape = build_furniture_naming_prompt(skip_shape_constraint=True)
+        self.assertIn("Size + Shape Filter (ABLATION: DISABLED)", no_shape)
+        self.assertNotIn("For each furniture with position `(x, y, width, height)`, calculate:", no_shape)
+        self.assertNotIn("Sofa's LONG SIDE MUST touch a wall", no_shape)
+
+    def test_no_behavior_prior_is_preserved_across_room_retries(self):
+        agent = RoomAgent.__new__(RoomAgent)
+        room_analysis = RoomAnalysis(
+            room_id="room1", room_type="bedroom", confidence=0.8)
+        agent.generate_room_analyses = Mock(
+            return_value=SimpleNamespace(room_analyses=[room_analysis]))
+        agent._apply_partial_priority = Mock(side_effect=lambda _, analyses: analyses)
+        agent._apply_layered_priority = Mock(
+            side_effect=AssertionError("full priority reintroduced"))
+        agent.validate_room_analyses = Mock(side_effect=[
+            SimpleNamespace(is_valid=False, errors=["retry"]),
+            SimpleNamespace(is_valid=False, errors=["retry"]),
+            SimpleNamespace(is_valid=False, errors=["retry"]),
+            SimpleNamespace(is_valid=False, errors=["retry"]),
+            SimpleNamespace(is_valid=True, errors=[]),
+        ])
+        agent.fix_room_analyses = Mock(side_effect=lambda analyses, _: analyses)
+
+        result = agent.analyze_rooms(
+            {"house": {"rooms": [{"id": "room1", "furniture": []}]}},
+            trajectory_data=[],
+            ablation={"skip_behavior_prior": True},
+        )
+
+        self.assertEqual(result[0].room_id, "room1")
+        self.assertEqual(agent._apply_partial_priority.call_count, 2)
+        agent._apply_layered_priority.assert_not_called()
+
+    def test_formal_variants_each_disable_the_intended_boundary(self):
+        self.assertEqual(
+            ablation_experiments.PIPELINE_VARIANTS,
+            {
+                "Full (Ours)": {},
+                "No Trajectory-Loop Recall": {
+                    "skip_trajectory_loop": True,
+                },
+                "No LLM Geometry Correction": {
+                    "skip_llm_correction": True,
+                },
+                "No 7-Layer Room Priority": {
+                    "skip_layered_priority": True,
+                },
+                "No Behavior Agent": {
+                    "skip_behavior_module": True,
+                },
+                "No Naming Funnel": {
+                    "skip_naming_funnel": True,
+                },
+            },
+        )
+
+    def test_no_llm_variant_keeps_deterministic_candidate_cleanup(self):
+        agent = FurnitureDetectionAgent.__new__(FurnitureDetectionAgent)
+        agent._annotate_structure_features = Mock()
+        agent._auto_merge_strong_signal_pairs = Mock(side_effect=lambda items, _: items)
+        candidates = [
+            {
+                "candidate_id": 0,
+                "candidate_type": "trajectory_surrounded",
+                "bbox": {"x": 0, "y": 0, "width": 2, "height": 2},
+            },
+            {
+                "candidate_id": 1,
+                "candidate_type": "hatch_furniture",
+                "bbox": {"x": 5, "y": 5, "width": 20, "height": 20},
+            },
+        ]
+
+        result = agent._prepare_candidates_for_correction(
+            candidates, traj_mask=None, scale=1.0, room_name="room1")
+
+        agent._annotate_structure_features.assert_called_once_with(
+            candidates, None, 1.0)
+        self.assertEqual([candidate["candidate_id"] for candidate in result], [1])
+        agent._auto_merge_strong_signal_pairs.assert_called_once_with(
+            result, "room1")
+
+    def test_ablation_summary_reports_both_matching_protocols(self):
+        metrics = SimpleNamespace(
+            room_f1=0.8,
+            furniture_f1=0.7,
+            semantic_f1=0.6,
+            furniture_naming_accuracy=0.5,
+            semantic_precision=0.75,
+        )
+        lines = "\n".join(ablation_experiments._build_module_table(
+            "module",
+            {"Full (Ours)": {}},
+            {"Full (Ours)": {"result_a": metrics, "result_b": metrics}},
+        ))
+
+        self.assertIn("Protocol: A. Global matching", lines)
+        self.assertIn("Protocol: B. Room-aligned matching", lines)
+
+    def test_naming_funnel_variant_uses_unconstrained_prompt(self):
+        agent = FurnitureNamingAgent.__new__(FurnitureNamingAgent)
+        agent._output_dir = None
+        agent.chain = Mock()
+        agent.unconstrained_chain = Mock()
+        agent.unconstrained_chain.invoke.return_value = SimpleNamespace(
+            content=json.dumps([{
+                "furniture_id": "room1_fur1",
+                "name": "lamp",
+                "room_id": "room1",
+                "confidence": 0.7,
+            }])
+        )
+        layout = {
+            "house": {
+                "rooms": [{
+                    "id": "room1",
+                    "position": {"x": 0, "y": 0, "width": 10, "height": 10},
+                    "furniture": [{
+                        "id": "room1_fur1",
+                        "position": {"x": 2, "y": 2, "width": 3, "height": 4},
+                    }],
+                }],
+            },
+        }
+        room_analyses = [RoomAnalysis(
+            room_id="room1", room_type="bedroom", confidence=0.8)]
+
+        result = agent.generate_furniture_namings(
+            layout, room_analyses, [], ablation={"skip_naming_funnel": True})
+
+        self.assertEqual(result.furniture_namings[0].name, "lamp")
+        agent.unconstrained_chain.invoke.assert_called_once()
+        agent.chain.invoke.assert_not_called()
+        payload = agent.unconstrained_chain.invoke.call_args.args[0]
+        self.assertNotIn("structured_features", payload)
+        self.assertNotIn("_features", payload["house_layout_yaml"])
+
+    def test_naming_funnel_variant_skips_allowed_list_and_geometry_repairs(self):
+        agent = FurnitureNamingAgent.__new__(FurnitureNamingAgent)
+        agent._ablation = {"skip_naming_funnel": True}
+        agent._apply_hard_geometry_rules = Mock(side_effect=AssertionError)
+        layout = {
+            "house": {
+                "rooms": [{
+                    "id": "room1",
+                    "position": {"x": 0, "y": 0, "width": 10, "height": 10},
+                    "furniture": [{
+                        "id": "room1_fur1",
+                        "position": {"x": 0, "y": 0, "width": 8, "height": 2},
+                    }],
+                }],
+            },
+        }
+        naming = FurnitureNaming(
+            furniture_id="room1_fur1", name="lamp", room_id="room1", confidence=0.8)
+        agent.generate_furniture_namings = Mock(
+            return_value=FurnitureNamingGenerationResult(
+                furniture_namings=[naming], confidence=0.8))
+        room_analyses = [RoomAnalysis(
+            room_id="room1", room_type="living_room", confidence=0.8)]
+
+        result = agent.name_furniture(layout, room_analyses, [])
+
+        self.assertEqual(result[0].name, "lamp")
+        agent._apply_hard_geometry_rules.assert_not_called()
 
 
 class VlmInputProtocolTests(unittest.TestCase):
@@ -474,6 +789,55 @@ class ComparisonProtocolTests(unittest.TestCase):
 
 
 class ProtocolViolationTests(unittest.TestCase):
+    def test_pre_final_protv_uses_generated_names_before_vocabulary_repair(self):
+        generated = [
+            FurnitureNaming(
+                furniture_id="room1_fur1", name="sofa",
+                room_id="room1", confidence=0.8),
+            FurnitureNaming(
+                furniture_id="room1_fur2", name="bed",
+                room_id="room1", confidence=0.8),
+            FurnitureNaming(
+                furniture_id="room1_fur3", name="oven",
+                room_id="room1", confidence=0.95),
+        ]
+        rooms = [RoomAnalysis(
+            room_id="room1", room_type="bedroom", confidence=0.9)]
+
+        with patch.object(ablation_experiments, "FURNITURE_ALLOWED",
+                          {"bedroom": ["bed"], "other": []}), \
+                patch.object(ablation_experiments, "SMART_DEVICE_NAMES", {"oven"}):
+            rate, violations, total = (
+                ablation_experiments.compute_pre_final_protocol_violation_rate(
+                    generated, rooms))
+
+        self.assertEqual((violations, total), (1, 2))
+        self.assertAlmostEqual(rate, 0.5)
+
+    def test_naming_agent_keeps_pre_final_snapshot_before_repair(self):
+        agent = FurnitureNamingAgent.__new__(FurnitureNamingAgent)
+        agent._ablation = {}
+        generated = FurnitureNaming(
+            furniture_id="room1_fur1", name="sofa",
+            room_id="room1", confidence=0.8)
+        repaired = FurnitureNaming(
+            furniture_id="room1_fur1", name="bed",
+            room_id="room1", confidence=0.5)
+        agent.generate_furniture_namings = Mock(
+            return_value=FurnitureNamingGenerationResult(
+                furniture_namings=[generated], confidence=0.8))
+        agent.validate_furniture_namings = Mock(
+            return_value=SimpleNamespace(is_valid=False, errors=["vocab"]))
+        agent.fix_furniture_namings = Mock(return_value=[repaired])
+        room_analyses = [RoomAnalysis(
+            room_id="room1", room_type="bedroom", confidence=0.9)]
+
+        final = agent.name_furniture(
+            {"house": {"rooms": []}}, room_analyses, [])
+
+        self.assertEqual(agent.last_pre_final_namings[0].name, "sofa")
+        self.assertEqual(final[0].name, "bed")
+
     def test_smart_devices_are_excluded_from_both_denominator_and_numerator(self):
         prediction = {
             "house": {

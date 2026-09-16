@@ -206,7 +206,8 @@ class RoomAgent:
             logger.error(f"Room validation failed: {str(e)}")
             return ValidationResult(is_valid=False, errors=[str(e)], suggestions=["Fix the validation process"])
     
-    def fix_room_analyses(self, room_analyses: List[RoomAnalysis], house_layout: Dict) -> List[RoomAnalysis]:
+    def fix_room_analyses(self, room_analyses: List[RoomAnalysis], house_layout: Dict,
+                          skip_behavior_prior: bool = False) -> List[RoomAnalysis]:
         """Fix room analyses"""
         try:
             # Get all room IDs from house layout
@@ -406,7 +407,7 @@ class RoomAgent:
                             score += 5
                     
                     # Check activity info
-                    activity_info = room.get('activity_info', {})
+                    activity_info = {} if skip_behavior_prior else room.get('activity_info', {})
                     primary_period = activity_info.get('primary_time_period', 'none')
                     if missing_type == "bedroom" and primary_period == "night":
                         score += 4
@@ -516,7 +517,7 @@ class RoomAgent:
                             type_scores["bedroom"] += 1
                             type_scores["living_room"] += 1
 
-                activity_info = room.get('activity_info', {})
+                activity_info = {} if skip_behavior_prior else room.get('activity_info', {})
                 primary_period = activity_info.get('primary_time_period', 'none')
                 if primary_period == 'night':
                     type_scores["bedroom"] += 4
@@ -553,10 +554,18 @@ class RoomAgent:
         """Analyze rooms and infer types with retry mechanism to ensure all required types are present
 
         ablation:
+            - skip_room_module: 跳过房间语义模块，全部房间退化为 "unknown"
+                                （单模块移除消融；下游按 unknown 处理）
             - skip_layered_priority: 跳过7层优先级，直接使用 LLM 输出
             - skip_behavior_prior: 跳过行为先验推理
         """
         ablation = ablation or {}
+        if ablation.get('skip_room_module'):
+            logger.info("[ABLATION] 跳过房间语义模块，全部房间类型标为 unknown")
+            rooms = house_layout.get('house', {}).get('rooms', [])
+            return [RoomAnalysis(room_id=room.get('id'), room_type='unknown',
+                                 confidence=0.3)
+                    for room in rooms]
         required_room_types = ["bedroom", "living_room", "kitchen", "bathroom"]
         max_retries = 3
         
@@ -579,6 +588,15 @@ class RoomAgent:
                 if ablation.get('skip_layered_priority'):
                     # 不应用优先级，直接 validate/fix
                     pass
+                elif ablation.get('skip_behavior_prior'):
+                    # 保持行为先验消融：重试时也只能使用部分优先级，
+                    # 不能回退到包含行为步骤的完整 7 层规则。
+                    logger.info(
+                        f"Retry attempt {attempt + 1}/{max_retries}: "
+                        "re-apply priority without behavior prior..."
+                    )
+                    room_analyses = self._apply_partial_priority(
+                        house_layout, room_analyses)
                 else:
                     # Retry: re-apply layered priority and force-fix missing types
                     logger.info(f"Retry attempt {attempt + 1}/{max_retries} for room analysis...")
@@ -594,7 +612,9 @@ class RoomAgent:
             logger.warning(f"Room analyses validation failed (attempt {attempt + 1}/{max_retries}): {validation_result.errors}")
             
             # Fix room analyses
-            room_analyses = self.fix_room_analyses(room_analyses, house_layout)
+            room_analyses = self.fix_room_analyses(
+                room_analyses, house_layout,
+                skip_behavior_prior=bool(ablation.get('skip_behavior_prior')))
             
             # Re-validate after fix
             validation_result = self.validate_room_analyses(room_analyses, house_layout)

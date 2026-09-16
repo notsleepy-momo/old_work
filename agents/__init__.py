@@ -14,7 +14,7 @@ from .furniture_naming_agent import FurnitureNamingAgent
 from .furniture_detection_agent import FurnitureDetectionAgent
 from .prompts import (
     ROOM_AGENT_PROMPT,
-    BEHAVIOR_AGENT_PROMPT,
+    BEHAVIOR_AGENT_ROOM_PROMPT,
     FURNITURE_AGENT_PROMPT,
 )
 
@@ -31,6 +31,6 @@ __all__ = [
     "FurnitureNamingAgent",
     "FurnitureDetectionAgent",
     "ROOM_AGENT_PROMPT",
-    "BEHAVIOR_AGENT_PROMPT",
+    "BEHAVIOR_AGENT_ROOM_PROMPT",
     "FURNITURE_AGENT_PROMPT",
 ]
